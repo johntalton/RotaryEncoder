@@ -41,7 +41,7 @@ class StateApplyer extends Transform {
 	constructor(statename, state) { super(); this.statename = statename; this.state = state; }
 	_transform(chunk, encoding, callback) {
 		//console.log(this.opt +  chunk);
-		this.state.transition(this.statname + chunk);
+		this.state.transition(this.statename + chunk);
 		callback(null, chunk);
 	}
 }
