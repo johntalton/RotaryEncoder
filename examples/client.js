@@ -21,14 +21,14 @@ const config = {
       A: { gpio: 5, activeLow: false },
       B: { gpio: 6, activeLow: false },
       button: 12,
-      pollTimeMs: 0
+      pollTimeMs: 13 * 1000
     },
     {
       name: 'right',
       A: { gpio: 23, activeLow: true },
       B: { gpio: 24, activeLow: true },
       button: 25,
-      pollTimeMs: 10 * 100
+      pollTimeMs: 17 * 1000
     }
   ],
   mqtt: {
@@ -41,101 +41,137 @@ function defaultConfig() {
 }
 
 function setupEncoders(config) {
-  config.encoders.map(encoder => {
-    encoder.client = { value: 0 };
-    encoder.client.A = new Gpio(encoder.A.gpio, 'in', 'both', { activeLow: encoder.A.activeLow });
-    encoder.client.B = new Gpio(encoder.B.gpio, 'in', 'both', { activeLow: encoder.B.activeLow });
-    encoder.client.button = new Gpio(encoder.button, 'in', 'both');
-
-    // each encoder has its own instance
-    encoder.client.machine = State_instance(State.default);
+  config.encoders.forEach(encoder => {
+    encoder.client = buildClient(encoder)
 
     function cury_handler(event, delta) {
       return function() {
+        // updated est value even when not connected
         encoder.client.value += delta;
-        console.log(encoder.name, event, encoder.client.value);
+        
+        if(config.mqtt.client.connected) {
+          const topic = 'rotaryEncoder/' + encoder.name;
+          const msg = {
+            name: encoder.name,
+            event: event,
+            delta: delta,
+            estValue: encoder.client.value
+          };
+          console.log('publish: ', topic, msg);
+          config.mqtt.client.publish(topic, JSON.stringify(msg), {}, err => {});
+        } 
+        else {
+          console.log('not connected, cache value', encoder.name,  encoder.client.value)
+        }
       }
     }
 
-    State.on(encoder.client.machine, cury_handler('CW', 1));
-    State.on(encoder.client.machine, cury_handler('CCW', -1));
-    State.on(encoder.client.machine, cury_handler('RCW', 1));
-    State.on(encoder.client.machine, 'RCCW', -1));
-
-    encoder.client.A.watch((err, value) => {
-      if(err) { console.log(e); process.exit(-1); }
-      //console.log(encoder.name, 'A', err, value);
-      State.to(encoder.client.machine, 'A' + value);
-    });
-
-    encoder.client.B.watch((err, value) => {
-      if(err) { console.log(e); process.exit(-1); }
-      //console.log(encoder.name, 'B', err, value);
-      State.to(encoder.client.machine, 'B' + value);
-    });
-
-    encoder.client.buttonState = false;
-    encoder.client.button.watch((err, value) => {
-      if(err) { console.log(e); process.exit(-1); }
-      //console.log(encoder.name, 'button', err, value);
-      if(value === 0 && encoder.client.buttonState) {
-        console.log(encoder.name + ' up');
-        encoder.client.buttonState = false;
-      } else if(value === 1 && !encoder.client.buttonState) {
-        console.log(encoder.name + ' down');
-        encoder.client.buttonState = true;
+    function bhandler(event) {
+      return () => {
+        if(config.mqtt.client.connected) {
+          const topic = 'rotaryEncoder/' + encoder.name;
+          const msg = {
+            name: encoder.name,
+            event: event,
+            estValue: encoder.client.value
+          };
+          console.log('publish: ', topic, msg);
+          config.mqtt.client.publish(topic, JSON.stringify(msg), {}, err => {});
+        }
       }
-    });
+    }
 
-    encoder.client.reaper = setInterval(() => {
-      if(encoder.client === undefined) {
-        console.log('polling while down');
-        return;
-      }
+    State.on(encoder.client.bmachine, 'UP', bhandler('UP'));
+    State.on(encoder.client.bmachine, 'DOWN', bhandler('DOWN'));
 
-      function reaper(gpio) {
-        return function reaper(err, value) {
-          if(err) {
-            console.log(encoder.name + ' ' + gpio.gpio, err);
-            //clearInterval(encoder.client.reaper);
-            
-            encoder.client.A.unexport();
-            encoder.client.B.unexport();
-            encoder.client.button.unexport();
-            encoder.client = undefined;
-          } 
-        };
-      }
-
-      encoder.client.A.read(reaper(encoder.client.A));
-      encoder.client.B.read(reaper(encoder.client.B));
-      encoder.client.button.read(reaper(encoder.client.button));
-    }, encoder.pollTimeMs);
+    State.on(encoder.client.machine, 'CW', cury_handler('CW', 1));
+    State.on(encoder.client.machine, 'CCW', cury_handler('CCW', -1));
+    State.on(encoder.client.machine, 'RCW', cury_handler('RCW', 1));
+    State.on(encoder.client.machine, 'RCCW', cury_handler('RCCW', -1));
   });
 
   return config;
 }
 
+function buildClient(config) {
+  const client = {
+    machine: State_instance(State.default),
+    value: 0,
+    A: new Gpio(config.A.gpio, 'in', 'both', { activeLow: config.A.activeLow }),
+    B: new Gpio(config.B.gpio, 'in', 'both', { activeLow: config.B.activeLow }),
+    button: new Gpio(config.button, 'in', 'both'),
+    bmachine: {
+      debug: false,
+      state: 'init',
+      states: {
+        'init': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up', event: 'UP' } },
+        'down': { 'down': { next: 'down' }, 'up': { next: 'up', event: 'UP' } },
+        'up': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up' } }
+      }
+    }
+  };
+
+  function curry_watch(eventprefix) {
+    return function(err, value) {
+      if(err) { console.log(e); process.exit(-1); }
+      State.to(client.machine, eventprefix + value);
+    };
+  }
+
+  client.A.watch(curry_watch('A'));
+  client.B.watch(curry_watch('B'));
+
+  client.button.watch((err, value) => {
+    if(err) { console.log(e); process.exit(-1); }
+    State.to(client.bmachine, value === 1 ? 'down' : 'up');
+  });
+
+  function reaper(gpio) {
+    return function reaper(err, value) {
+      if(err) {
+        console.log(config.name + ' ' + gpio.gpio, err);
+        clearInterval(client.reaper);
+            
+        client.A.unexport();
+        client.B.unexport();
+        client.button.unexport();
+      } 
+    };
+  }
+
+  client.reaper = setInterval(() => {
+
+    // console.log('reaper poll', config.name);
+    if(client === undefined) {
+      console.log('polling while down');
+      return;
+    }
+
+    client.A.read(reaper(client.A));
+    client.B.read(reaper(client.B));
+    client.button.read(reaper(client.button));
+  }, config.pollTimeMs);
+  
+  return client;
+}
+
 function setupStore(config) {
- console.log('setup store ', config.mqtt.url);
- if(application.mqtt.url === undefined) { return Promise.reject('undefined mqtt url'); }
-    application.mqtt.client = mqtt.connect(config.mqtt.url, { reconnectPeriod: config.mqtt.reconnectMSecs });
-    application.mqtt.client.on('connect', () => { State.to(config.mqtt.machine, 'mqtt') });
-    application.mqtt.client.on('reconnect', () => { });
-    application.mqtt.client.on('close', () => { });
-    application.mqtt.client.on('offline', () => { State.to(application.mqtt.machine, 'dmqtt'); });
-    application.mqtt.client.on('error', (error) => { console.log(error); process.exit(-1); });
+  console.log('setup store ', config.mqtt.url);
+  if(config.mqtt.url === undefined) { return Promise.reject('undefined mqtt url'); }
+  
+  config.mqtt.client = mqtt.connect(config.mqtt.url, { reconnectPeriod: config.mqtt.reconnectMSecs });
+  config.mqtt.client.on('connect', () => { console.log('mqtt connected'); });
+  config.mqtt.client.on('reconnect', () => { });
+  config.mqtt.client.on('close', () => { });
+  config.mqtt.client.on('offline', () => { console.log('mqtt offline'); });
+  config.mqtt.client.on('error', (error) => { console.log(error); process.exit(-1); });
 
-    confing.machine
-
-    return Promise.resolve(application);
-
+  return Promise.resolve(config);
 }
 
 defaultConfig()
-  .then(setupState)
-  .then(setupEncoders)
   .then(setupStore)
+  .then(setupEncoders)
   .then(() => { console.log('Up.'); })
   .catch(e => {
     console.log('top-level error', e);

@@ -2,9 +2,9 @@
 var GS = require('gpio-stream');
 var Transform = require('stream').Transform;
 
-var knobA = GS.readable(5);
-var knobB = GS.readable(6);
-var knobC = GS.readable(12);
+var knobA = GS.readable(23);
+var knobB = GS.readable(24);
+var knobC = GS.readable(25);
 
 var states = {
 	'I':   { 'A0': 'I', 'A1': 'II', 'B0': 'I', 'B1': 'III' },
