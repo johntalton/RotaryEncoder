@@ -2,9 +2,8 @@
   "name": "rotary-encoder",
   "version": "1.0.0",
   "description": "",
-  "main": "rotaryencoder.js",
+  "main": "src/state.js",
   "dependencies": {
-    "gpio-stream": "^1.0.17",
     "mqtt": "^2.15.2",
     "onoff": "^1.2.0"
   },

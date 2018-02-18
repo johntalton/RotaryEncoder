@@ -6,6 +6,10 @@ Uses spec defined state machine to validate control and give accurate and consis
 
 [Adafruit Rotary Encoder](https://www.adafruit.com/product/377)
 
+## client
+
+simple mqtt clint to stream a set of encoder event
+
 ## dependency
 
-```gpio-stream``` currently used.  
+```onoff``` currently used.  

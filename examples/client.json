@@ -1,0 +1,19 @@
+{
+  "encoders": [
+    {
+      "name": "left",
+      "A": { "gpio": 5, "activeLow": false },
+      "B": { "gpio": 6, "activeLow": false },
+      "button": 12,
+      "pollTimeS": 13
+    },
+    {
+      "name": "right",
+      "A": { "gpio": 23, "activeLow": true },
+      "B": { "gpio": 24, "activeLow": true },
+      "button": 25,
+      "pollTimeMs": 17000
+    }
+  ]
+}
+

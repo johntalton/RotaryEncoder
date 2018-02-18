@@ -1,62 +1,87 @@
+"use strict";
 
-var GS = require('gpio-stream');
-var Transform = require('stream').Transform;
+const onoff = require('onoff');
+const Gpio = onoff.Gpio;
 
-var knobA = GS.readable(23);
-var knobB = GS.readable(24);
-var knobC = GS.readable(25);
+const State = require('./state.js');
 
-var states = {
-	'I':   { 'A0': 'I', 'A1': 'II', 'B0': 'I', 'B1': 'III' },
-	'II':  { 'A0': 'I', 'A1': 'II', 'B0': 'II', 'B1': 'IV' },
-	'III': { 'A0': 'III', 'A1': 'V', 'B0': 'I', 'B1': 'III' },
-	'IV':  { 'A0': 'VI', 'A1': 'IV', 'B0': 'II', 'B1': 'IV' },
-	'V':   { 'A0': 'III', 'A1': 'V', 'B0': 'VII', 'B1': 'V' },
-	'VI':  { 'A0': 'VI', 'A1': 'IV', 'B0': 'I', 'B1': 'VI' },
-	'VII': { 'A0': 'I', 'A1': 'VII', 'B0': 'VII', 'B1': 'V' }
+class RotaryEncoder {
+  static make(config) {
+    const client = {
+      abMachine: State.instance(State.machineABEncoder),
+      value: 0,
+      A: new Gpio(config.A.gpio, 'in', 'both', { activeLow: config.A.activeLow }),
+      B: new Gpio(config.B.gpio, 'in', 'both', { activeLow: config.B.activeLow }),
+      button: (config.button !== undefined) ? new Gpio(config.button, 'in', 'both') : undefined,
+      bMachine: {
+        debug: false,
+        state: 'init',
+        states: {
+          'init': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up', event: 'UP' } },
+          'down': { 'down': { next: 'down' }, 'up': { next: 'up', event: 'UP' } },
+          'up': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up' } }
+        }
+      }
+    };
+
+    function curry_watch(eventprefix) {
+      return function(err, value) {
+        if(err) { console.log(e); process.exit(-1); }
+        State.to(client.abMachine, eventprefix + value);
+      };
+    }
+
+    client.A.watch(curry_watch('A'));
+    client.B.watch(curry_watch('B'));
+
+    if(client.button) {
+      client.button.watch((err, value) => {
+        if(err) { console.log(e); process.exit(-1); }
+        State.to(client.bMachine, value === 1 ? 'down' : 'up');
+      });
+    }
+
+    function reaper(gpio) {
+      return function reaper(err, value) {
+        if(err) {
+          console.log(config.name + ' ' + gpio.gpio, err);
+          clearInterval(client.reaper);
+
+          client.A.unexport();
+          client.B.unexport();
+          if(client.button) {
+            client.button.unexport();
+          }
+        }
+      };
+    }
+
+    client.reaper = setInterval(() => {
+
+      // console.log('reaper poll', config.name);
+      if(client === undefined) {
+        console.log('polling while down');
+        return;
+      }
+
+      client.A.read(reaper(client.A));
+      client.B.read(reaper(client.B));
+      if(client.button) {
+        client.button.read(reaper(client.button));
+      }
+    }, config.pollTimeMs);
+
+    return client;
+  }
+
+  static buttonUp(client, callback) { State.on(client.bMachine, 'UP', callback); }
+  static buttonDown(client, callback) { State.on(client.bMachine, 'DOWN', callback); }
+  static cw(client, callback) { State.on(client.abMachine, 'CW', callback); }
+  static ccw(client, callback) { State.on(client.abMachine, 'CCW', callback); }
+  static rcw(client, callback) { State.on(client.abMachine, 'RCW', callback); }
+  static rccw(client, callback) { State.on(client.abMachine, 'RCCW', callback); }
+
 }
 
-class State {
-	constructor(states){ this.states = states; this.currentState = 'I'; this.value = 0; }
-	transition(edge){
-		var prev = this.currentState;
+module.exports = RotaryEncoder;
 
-		var posibles = this.states[this.currentState];
-		//console.log(posibles[edge.trim()]);
-		this.currentState = posibles[edge.trim()];
-
-		var cur = this.currentState;
-		//console.log(prev +  ' -> ' + cur);
-
-		if(prev === 'VI' && cur === 'I') { this.value += 1; console.log('CW  ' + this.value); }
-		if(prev === 'VII' && cur === 'I') { this.value -= 1; console.log('CCW ' + this.value); }
-		if(prev === 'II' && cur === 'I') { this.value -= 1; console.log('R CWW ' + this.value); }
-		if(prev === 'III' && cur === 'I') { this.value += 1; console.log('R CW ' + this.value); }
-
-	}
-
-}
-
-class StateApplyer extends Transform {
-	constructor(statename, state) { super(); this.statename = statename; this.state = state; }
-	_transform(chunk, encoding, callback) {
-		//console.log(this.opt +  chunk);
-		this.state.transition(this.statename + chunk);
-		callback(null, chunk);
-	}
-}
-
-class ButtonTracker extends Transform {
-	_transform(chunk, encoding, callback) {
-		if(chunk[0] === '1'.charCodeAt(0)) { if(!this.down) { this.down = true; console.log('down'); } }
-		else if(chunk[0] === '0'.charCodeAt(0)) { if(this.down) { this.down = false; console.log('up'); } }
-		callback(null, chunk);
-	}
-}
-
-var state = new State(states);
-
-knobA.pipe(new StateApplyer('A', state));
-knobB.pipe(new StateApplyer('B', state));
-
-knobC.pipe(new ButtonTracker());

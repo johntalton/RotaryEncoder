@@ -43,6 +43,13 @@ const machine = {
 };
 
 class SyncState {
+  static instance(machine) {
+    return {
+      state: machine.state,
+      states: machine.states
+    };
+  }
+
   static to(machine, state) {
     const transition = machine.states[machine.state][state];
     if(machine.debug) {
@@ -65,6 +72,6 @@ class SyncState {
   }
 }
 
-SyncState.default = machine;
+SyncState.machineABEncoder = machine;
 
 module.exports = SyncState;
