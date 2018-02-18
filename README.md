@@ -8,7 +8,7 @@ Uses spec defined state machine to validate control and give accurate and consis
 
 ## client
 
-simple mqtt clint to stream a set of encoder event
+simple mqtt client to stream a set of encoder event
 
 ## dependency
 
