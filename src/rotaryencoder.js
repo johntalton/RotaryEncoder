@@ -24,6 +24,8 @@ class RotaryEncoder {
       }
     };
 
+    client.abMachine.debug = true;
+
     function curry_watch(eventprefix) {
       return function(err, value) {
         if(err) { console.log(e); process.exit(-1); }

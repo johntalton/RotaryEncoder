@@ -9,8 +9,8 @@
     },
     {
       "name": "right",
-      "A": { "gpio": 23, "activeLow": true },
-      "B": { "gpio": 24, "activeLow": true },
+      "A": { "gpio": 23, "activeLow": false },
+      "B": { "gpio": 24, "activeLow": false },
       "button": 25,
       "pollTimeMs": 17000
     }

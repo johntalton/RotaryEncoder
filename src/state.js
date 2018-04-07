@@ -4,15 +4,15 @@ const machine = {
   debug: false,
   state: 'I',
   states: {
-    'I': { 
+    'I': {
       'A0': { next: 'I' },
       'A1': { next: 'II' },
-      'B0': { next: 'I' }, 
+      'B0': { next: 'I' },
       'B1': { next: 'III' } },
      'II':  {
       'A0': { next: 'I', event: 'RCCW' },
       'A1': { next: 'II' },
-      'B0': { next: 'II' }, 
+      'B0': { next: 'II' },
       'B1': { next: 'IV' } },
     'III': {
       'A0': { next: 'III' },
@@ -45,6 +45,7 @@ const machine = {
 class SyncState {
   static instance(machine) {
     return {
+      debug: machine.debug, // we should default false,
       state: machine.state,
       states: machine.states
     };
