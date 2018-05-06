@@ -3,6 +3,18 @@
 const fs = require('fs');
 
 class Config {
+  static _getMs(cfg, name, defaultMs) {
+    const s = cfg[name + 'S'];
+    const ms = cfg[name + 'Ms'];
+
+    if(s === undefined && ms === undefined) { return defaultMs; }
+
+    const s_z = s !== undefined ? s : 0;
+    const ms_z = ms !== undefined ? ms : 0;
+
+    return s_z * 1000 + ms_z;
+  }
+
   static config(path) {
     return new Promise((resolve, reject) => {
       fs.readFile(path, (err, data) => {
@@ -14,46 +26,55 @@ class Config {
   }
 
   static fillInTheBlanks(rawConfig) {
-    let encoders = rawConfig.encoders ? rawConfig.encoders : []; // [rawConfig.encoders] ruby style?
-    encoders = encoders.map((rawEnc, index) => {
-      let name = rawEnc.name;
-      if(name === undefined) { console.log('unnamed encoder', index); name = index.toString(); }
+    if(!Array.isArray(rawConfig.encoders)) { throw Error('encoders is not an array'); }
 
-
-      if(!rawEnc.A) { console.log('encoder missing A config', name, ); return null; }
-      if(rawEnc.A.gpio === undefined) { console.log('missing A.gpio', name); return null; }
-
-      if(!rawEnc.B) { console.log('encoder missing B config', name, ); return null; }
-      if(rawEnc.B.gpio === undefined) { console.log('missing B.gpio', name); return null; }
-
-      let A = { gpio: rawEnc.A.gpio, activeLow: rawEnc.A.activeLow };
-      if(rawEnc.A.activeLow === undefined) { console.log('assuming active low false for A', name); A.activeLow = false  }
-
-      let B = { gpio: rawEnc.B.gpio, activeLow: rawEnc.B.activeLow };
-      if(rawEnc.B.activeLow === undefined) { console.log('assuming active low false for B', name); B.activeLow = false  }
-
-
-      let button = rawEnc.button;
-      if(rawEnc.button === undefined) { console.log('no button config, assuming disabled'); button = undefined; }
-
-      const S = rawEnc.pollTimeS ? rawEnc.pollTimeS : 0;
-      const Ms = rawEnc.pollTimeMs ? rawEnc.pollTimeMs : 0;
-      const pollTimeMs = S * 1000 + Ms;
-  
-      return {
-        name: name,
-        A: A,
-        B: B,
-        button: button,
-        pollTimeMs: pollTimeMs
-      }
-    }).filter(enc => enc != null);
+    const encoders = rawConfig.encoders.map((rawEnc, index) => {
+      return Config.fillInEnc(rawEnc, index);
+    });
 
     return {
       encoders: encoders,
       mqtt: {
         url: (rawConfig.mqtt && rawConfig.mqtt.url) ? rawConfig.mqtt.url : process.env.mqtturl
       }
+    };
+  }
+
+  static fillInEnc(enc, index) {
+    const name = (enc.name !== undefined) ? enc.name : index.toString();
+    const idleStatusPollMs = Config._getMs(enc, 'idleStatusPoll', 0);
+    const retryMs = Config._getMs(enc, 'retry', 10 * 1000);
+
+    return {
+      name: name,
+      A: Config.fillInGpio(enc.A, 'A'),
+      B: Config.fillInGpio(enc.B, 'B'),
+      button: Config.fillInGpio(enc.button, 'button'),
+      idleStatusPollMs: idleStatusPollMs,
+      retryMs: retryMs
+    };
+  }
+
+  static fillInGpio(pin, defaultName) {
+    if(pin === undefined) { return { disabled: true, name: defaultName }; }
+    if(!Number.isNaN(parseInt(pin))) { return { name: defaultName, disabled: false, gpio: pin, activeLow: false}; }
+
+    const name = (pin.name !== undefined) ? pin.name : defaultName;
+    const disabled = (pin.disabled !== undefined) ? pin.disabled : false;
+    const activeLow = (pin.activeLow !== undefined) ? pin.activeLow : false;
+
+    if(!disabled) {
+      if(pin.gpio === undefined) { throw Error('undefined gpio for pin: ' + name); }
+      if(Number.isNaN(parseInt(pin.gpio))) { throw Error('invalid pin gpio number: ' + namne); }
+    }
+
+    const gpio = pin.gpio;
+
+    return {
+      name: name,
+      disabled: disabled,
+      gpio: gpio,
+      activeLow: activeLow
     };
   }
 

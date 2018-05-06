@@ -1,6 +1,16 @@
 "use strict";
 
-const machine = {
+const machineButton = {
+  debug: false,
+   state: 'init',
+   states: {
+    'init': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up', event: 'UP' } },
+    'down': { 'down': { next: 'down' }, 'up': { next: 'up', event: 'UP' } },
+    'up': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up' } }
+  }
+};
+
+const machineABEncoder = {
   debug: false,
   state: 'I',
   states: {
@@ -43,9 +53,10 @@ const machine = {
 };
 
 class SyncState {
-  static instance(machine) {
+  static instance(machine, debug) {
+    const d = (debug !== undefined) ? debug : machine.debug;
     return {
-      debug: machine.debug, // we should default false,
+      debug: d,
       state: machine.state,
       states: machine.states
     };
@@ -56,23 +67,25 @@ class SyncState {
     if(machine.debug) {
       console.log('\u001b[91mtransition', machine.state, state, transition, '\u001b[0m');
     }
-    if(machine.ons !== undefined && transition.event !== undefined) {
-      const on = machine.ons[transition.event];
-      if(on !== undefined) {
-        try { on(); } catch(e) { console.log('machine callback error', e); }
-      }
-    }
+
+    //if(machine.ons !== undefined && transition.event !== undefined) {
+    //  const on = machine.ons[transition.event];
+    //  if(on !== undefined) {
+    //    try { on(); } catch(e) { console.log('machine callback error', e); }
+    //  }
+    //}
 
     machine.state = transition.next;
     return transition.event;
   }
 
-  static on(machine, event, callback) {
-    if(machine.ons === undefined) { machine.ons = {}; }
-    machine.ons[event] = callback;
-  }
+  //static on(machine, event, callback) {
+  //  if(machine.ons === undefined) { machine.ons = {}; }
+  //  machine.ons[event] = callback;
+  //}
 }
 
-SyncState.machineABEncoder = machine;
+SyncState.machineABEncoder = machineABEncoder;
+SyncState.machineButton = machineButton
 
 module.exports = SyncState;

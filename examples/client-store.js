@@ -4,7 +4,7 @@ const mqtt = require('mqtt');
 
 class Store {
   static make(config) {
-    console.log('setup store ', config.url);
+    //console.log('setup store ', config.url);
     if(config.url === undefined) { throw Error('undefined mqtt url'); }
 
     const client = mqtt.connect(config.url, { reconnectPeriod: config.reconnectMSecs });

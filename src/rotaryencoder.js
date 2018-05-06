@@ -1,88 +1,101 @@
 "use strict";
 
+const { EventEmitter } = require('events');
+
 const onoff = require('onoff');
 const Gpio = onoff.Gpio;
 
 const State = require('./state.js');
 
-class RotaryEncoder {
-  static make(config) {
-    const client = {
-      abMachine: State.instance(State.machineABEncoder),
-      value: 0,
-      A: new Gpio(config.A.gpio, 'in', 'both', { activeLow: config.A.activeLow }),
-      B: new Gpio(config.B.gpio, 'in', 'both', { activeLow: config.B.activeLow }),
-      button: (config.button !== undefined) ? new Gpio(config.button, 'in', 'both') : undefined,
-      bMachine: {
-        debug: false,
-        state: 'init',
-        states: {
-          'init': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up', event: 'UP' } },
-          'down': { 'down': { next: 'down' }, 'up': { next: 'up', event: 'UP' } },
-          'up': { 'down': { next: 'down', event: 'DOWN' }, 'up': { next: 'up' } }
-        }
-      }
-    };
+class GpioGroup {
+  static from(config) {
+    // try gpio first, fast fail
+    if(Gpio.accessible === false) { return Promise.reject(Error('Gpio not Accessible.')); }
 
-    client.abMachine.debug = true;
+    // as we are doing fullup/down here we have to work in steps
+    const gpios = [];
+    try {
+      tmpA = RotaryEncoder._setupGpio(config.A);
+      tmpB = RotaryEncoder._setupGpio(config.B);
+      tmpButton = RotaryEncoder._setupGpio(config.button);
+    }
+    catch(e) {
+      if(tmpA) { tmpA.unexport(); }
+      if(tmpB) { tmpB.unexport(); }
+      if(tmpButton) { tmpButton.unexport(); }
 
-    function curry_watch(eventprefix) {
-      return function(err, value) {
-        if(err) { console.log(e); process.exit(-1); }
-        State.to(client.abMachine, eventprefix + value);
-      };
+      return Promise.reject(e);
     }
 
-    client.A.watch(curry_watch('A'));
-    client.B.watch(curry_watch('B'));
-
-    if(client.button) {
-      client.button.watch((err, value) => {
-        if(err) { console.log(e); process.exit(-1); }
-        State.to(client.bMachine, value === 1 ? 'down' : 'up');
-      });
-    }
-
-    function reaper(gpio) {
-      return function reaper(err, value) {
-        if(err) {
-          console.log(config.name + ' ' + gpio.gpio, err);
-          clearInterval(client.reaper);
-
-          client.A.unexport();
-          client.B.unexport();
-          if(client.button) {
-            client.button.unexport();
-          }
-        }
-      };
-    }
-
-    client.reaper = setInterval(() => {
-
-      // console.log('reaper poll', config.name);
-      if(client === undefined) {
-        console.log('polling while down');
-        return;
-      }
-
-      client.A.read(reaper(client.A));
-      client.B.read(reaper(client.B));
-      if(client.button) {
-        client.button.read(reaper(client.button));
-      }
-    }, config.pollTimeMs);
-
-    return client;
+    return Promise.resolve();
   }
 
-  static buttonUp(client, callback) { State.on(client.bMachine, 'UP', callback); }
-  static buttonDown(client, callback) { State.on(client.bMachine, 'DOWN', callback); }
-  static cw(client, callback) { State.on(client.abMachine, 'CW', callback); }
-  static ccw(client, callback) { State.on(client.abMachine, 'CCW', callback); }
-  static rcw(client, callback) { State.on(client.abMachine, 'RCW', callback); }
-  static rccw(client, callback) { State.on(client.abMachine, 'RCCW', callback); }
 
+  static _setupGpio(gpio) {
+    //console.log('attempting to setup gpio for', gpio.name);
+    if(gpio.disabled) { return; }
+
+    try {
+      const pin = new Gpio(gpio.gpio, 'in', 'both', { activeLow: gpio.activeLow });
+      if(pin.direction() !== 'in') {
+        pin.export();
+        return Promise.reject(Error('Gpio pin ' + gpio.name + ' direction invalid'));
+      }
+      return pin;
+    }
+    catch(e) {
+      throw Error('Gpio pin ' + gpio.name + ' failure: ' + e.message);
+    }
+  }
+
+
+}
+
+class RotaryEncoder extends EventEmitter{
+  static setup(config) {
+    //console.log('RC setup', config);
+
+    const group = GpioGroup.from();
+
+    return Promise.resolve(new RotaryEncoder(tmpA, tmpB, tmpButton, config));
+  }
+
+  constructor(gpioGroup, config) {
+    super();
+
+    this.gpioGroup = gpioGroup;
+
+    // instance of machines
+    this.abMachine = State.instance(State.machineABEncoder, config.debug);
+    this.bMachine = State.instance(State.machineButton, config.debug);
+  }
+
+  start() {
+    // setup watches
+    if(this.A !== undefined) { this.A.watch(RotaryEncoder._makeHandler(this.abMachine, value => ('A' + value))); }
+    if(this.B !== undefined) { this.B.watch(RotaryEncoder._makeHandler(this.abMachine, value => ('B' + value))); }
+    if(this.button !== undefined) { this.button.watch(RotaryEncoder._makeHandler(this.bMachine, value => (value === 1 ? 'down' : 'up'))); }
+  }
+
+  static _makeHandler(machine, eventnameFn) {
+    return (err, value) => {
+      if(err) { console.log('watch error (suppress)', err); return; }
+      const outEvent = State.to(machine, eventnameFn(value));
+      if(outEvent !== undefined) {
+        emit('')
+      }
+    }
+  }
+
+  proble() {
+    return Promise.resolve();
+  }
+
+  close() {
+    if(this.A) { try { this.A.unexport(); } catch(e) { console.log(e);} }
+    if(this.B) { try { this.B.unexport(); } catch(e) { console.log(e); } }
+    if(this.button) { try { this.button.unexport(); } catch(e) { console.log(e); } }
+  }
 }
 
 module.exports = RotaryEncoder;

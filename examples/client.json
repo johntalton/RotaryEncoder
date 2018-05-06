@@ -2,17 +2,22 @@
   "encoders": [
     {
       "name": "left",
+      "active": true,
+
       "A": { "gpio": 5, "activeLow": false },
       "B": { "gpio": 6, "activeLow": false },
       "button": 12,
-      "pollTimeS": 13
+
+      "idleStatusPollS": 13,
+      "retryS": 2
     },
     {
       "name": "right",
       "A": { "gpio": 23, "activeLow": false },
       "B": { "gpio": 24, "activeLow": false },
       "button": 25,
-      "pollTimeMs": 17000
+
+      "idleStatusPollMs": 17000
     }
   ]
 }
