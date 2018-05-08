@@ -1,16 +1,17 @@
 
+//const { Gpio, GPIO_ONE, GPIO_ZERO } = require('onoff');
 const { Gpio } = require('onoff');
 
 class GpioUtil {
   // setup single pin or throw (also undef all disableds)
   static _setup(gpio) {
-    console.log('settup gpio pin', gpio.name);
+    //console.log('settup gpio pin', gpio.name);
     if(gpio.disabled) { return undefined; }
 
     // TODO direction / edge
 
     try {
-      console.log('trying gpio pin ', gpio.gpio)
+      //console.log('trying gpio pin ', gpio.gpio)
       const pin = new Gpio(gpio.gpio, 'in', 'both', { activeLow: gpio.activeLow });
       if(pin.direction() !== 'in') {
         pin.unexport(); // TODO this unexport may have fixed the problem of ownership, try again
@@ -26,7 +27,7 @@ class GpioUtil {
 
   // close any valid pins in array
   static _close(...gpios) {
-    console.log('gpio group closing');
+    //console.log('gpio group closing');
     gpios.forEach(gpio => {
       if(gpio === undefined) { return; } // make safe for sparce array
       try { gpio.unexport(); } catch(e) { console.log(e); } // TODO fully suppress or warn?
@@ -39,7 +40,7 @@ class GpioUtil {
  **/
 class GpioGroupImpl {
   constructor(...config) {
-    console.log('gpio group created', config);
+    //console.log('gpio group created', config);
     this.gpios = config;
   }
 
@@ -49,7 +50,7 @@ class GpioGroupImpl {
       .find(() => true);
   }
 
-  gpios(...names) {
+  gpioAll(...names) {
     return this.gpios.filter(gpio => names.includes(gpio.name))
       .map(gpio => gpio.client);
   }
@@ -75,7 +76,7 @@ class GpioGroup {
       config.forEach(gpio => gpios.push(GpioUtil._setup(gpio)));
     }
     catch(e) {
-      console.log('gpio group setup failure');
+      //console.log('gpio group setup failure');
       GpioUtil._close(...gpios.map(gpio => gpio.client));
       return Promise.reject(e);
     }

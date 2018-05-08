@@ -4,7 +4,7 @@ const { EventEmitter } = require('events');
 const State = require('./state.js');
 const GpioGroup = require('./gpiogroup.js');
 
-// const GPIO_ZERO = 0;
+// const { GPIO_ONE } = require('onoff');
 const GPIO_ONE = 1;
 
 /**
@@ -30,7 +30,7 @@ class RotaryEncoder extends EventEmitter {
   }
 
   start() {
-    console.log('Starting Encoder Watches', this.group);
+    // console.log('Starting Encoder Watches');
     const self = this;
 
     function makeABHandler(aorb) {
@@ -53,8 +53,6 @@ class RotaryEncoder extends EventEmitter {
     const B = this.group.gpio('B');
     const button = this.group.gpio('button');
 
-    console.log(A);
-
     if(A !== undefined) { A.watch(makeABHandler('A')); }
     if(B !== undefined) { B.watch(makeABHandler('B')); }
     if(button !== undefined) { button.watch(handleButton); }
@@ -64,7 +62,7 @@ class RotaryEncoder extends EventEmitter {
     // note don't close as that would teardown the group
     // TODO unwatch all in group
 
-    const [A, B, button] = this.group.gpio('A', 'B', 'button');
+    const [A, B, button] = this.group.gpioAll('A', 'B', 'button');
 
     A.unwatchAll(); // TODO unwatch ALL is agressive? track callback
     B.unwatchAll();
@@ -83,7 +81,7 @@ class RotaryEncoder extends EventEmitter {
       });
     }
 
-    const pins = this.group.gpio('A', 'B', 'button');
+    const pins = this.group.gpioAll('A', 'B', 'button');
 
     return Promise.all(pins.map(pinState))
       .then((a, b, but) => {
