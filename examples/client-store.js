@@ -1,20 +1,10 @@
-"use strict";
 
 const mqtt = require('mqtt');
 
 class Store {
   static make(config) {
-    //console.log('setup store ', config.url);
     if(config.url === undefined) { throw Error('undefined mqtt url'); }
-
-    const client = mqtt.connect(config.url, { reconnectPeriod: config.reconnectMSecs });
-    client.on('connect', () => { console.log('mqtt connected'); });
-    client.on('reconnect', () => { });
-    client.on('close', () => { });
-    client.on('offline', () => { console.log('mqtt offline'); });
-    client.on('error', (error) => { console.log(error); process.exit(-1); });
-
-    return client;
+    return mqtt.connect(config.url, { reconnectPeriod: config.reconnectMSecs });
   }
 
   static sendKnobEvent(client, encoder, event, delta) {
@@ -27,10 +17,10 @@ class Store {
         estValue: encoder.client.value
       };
       console.log('publish: ', topic, msg);
-      client.publish(topic, JSON.stringify(msg), {}, err => {});
+      client.publish(topic, JSON.stringify(msg), {}, err => { console.log('publish error', err); });
     }
     else {
-      console.log('not connected, cache value', encoder.name,  encoder.client.value)
+      console.log('not connected, cache value', encoder.name, encoder.client.value)
     }
   }
 
@@ -43,7 +33,7 @@ class Store {
         estValue: encoder.client.value
       };
       console.log('publish: ', topic, msg);
-      client.publish(topic, JSON.stringify(msg), {}, err => {});
+      client.publish(topic, JSON.stringify(msg), {}, err => { console.log('publish error', err); });
     }
     else {
       console.log('not connected, button event dropped', encoder.name);

@@ -13,6 +13,7 @@
     },
     {
       "name": "right",
+
       "A": { "gpio": 23, "activeLow": false },
       "B": { "gpio": 24, "activeLow": false },
       "button": 25,

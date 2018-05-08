@@ -1,4 +1,3 @@
-"use strict";
 
 const machineButton = {
   debug: false,
@@ -54,7 +53,7 @@ const machineABEncoder = {
 
 class SyncState {
   static instance(machine, debug) {
-    const d = (debug !== undefined) ? debug : machine.debug;
+    const d = debug !== undefined ? debug : machine.debug;
     return {
       debug: d,
       state: machine.state,

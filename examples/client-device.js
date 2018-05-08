@@ -1,18 +1,30 @@
-"use strict";
+
+const EventEmiter = require('events');
 
 const RotaryEncoder = require('../src/rotaryencoder.js');
 
-class Device {
+/**
+ *
+ *
+ * knobtouch
+ * knobidle
+ * knobdown
+ * knobup
+ * knobrotate
+ **/
+class Device extends EventEmiter {
   static setupWithRetry(config) {
     return RotaryEncoder.setup(config)
       .then(enc => {
         console.log('Encoder', config.name, 'up\u00B9');
+
         config.client = enc;
+        Device._configure(config);
       })
       .catch(e => {
         console.log('initial setup failure', e);
 
-        if(false) { console.log('halting error'); return; }
+        // if(false) { console.log('halting error'); return; }
 
         config.retrytimmer = setInterval(Device._retrySetup_poll, config.retryMs, config);
       });
@@ -20,26 +32,51 @@ class Device {
 
   static async _retrySetup_poll(config) {
     console.log('retry setup', config.name);
-    // async off into oblivion
-    const rv = await RotaryEncoder.setup(config)
+
+    await RotaryEncoder.setup(config)
       .then(enc => {
         console.log('Encoder ', config.name, 'up\u00B2');
-        config.client = enc;
 
         clearInterval(config.retrytimmer);
 
-        // start idlePoll
+        config.client = enc;
+        Device._configure(config);
       })
       .catch(e => {
         console.log('retry setup failure', e);
       });
   }
 
-  static startStream() {}
+  static _configure(config) {
+    const enc = config.client;
 
-  static stopStream() {}
+    enc.on('up', () => console.log('up'));
+    enc.on('down', () => console.log('down'));
 
-  static idleStatus_poll() {
+    enc.on('CW', () => console.log('CW'));
+    enc.on('RCW', () => console.log('RCW'));
+    enc.on('CCW', () => console.log('CCW'));
+    enc.on('RCCW', () => console.log('RCCW'));
+
+    // idel status timer
+  }
+
+  static startStream(config) {
+    console.log('starting device stream', config.name);
+    if(config.client === undefined) { console.log('trying to start unsetup stream'); return; }
+    config.client.start();
+  }
+
+  static stopStream(config) {
+    if(config.client === undefined) { return; }
+    config.client.stop();
+  }
+
+  static async idleStatus_poll(config) {
+    await config.client.probe()
+      .then(result => {
+        console.log('probe returned', result)
+      });
   }
 }
 
