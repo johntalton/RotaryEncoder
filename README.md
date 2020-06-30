@@ -2,6 +2,14 @@
 
 Simple knob control.  Good for simple step up / step down rotation where center point is reset on power. 
 
+[![npm Version](http://img.shields.io/npm/v/@johntalton/RotaryEncoder.svg)](https://www.npmjs.com/package/@johntalton/RotaryEncoder)
+![GitHub package.json version](https://img.shields.io/github/package-json/v/johntalton/RotaryEncoder)
+![CI](https://github.com/johntalton/RotaryEncoder/workflows/CI/badge.svg?branch=master&event=push)
+![GitHub](https://img.shields.io/github/license/johntalton/RotaryEncoder)
+[![Downloads Per Month](http://img.shields.io/npm/dm/@johntalton/RotaryEncoder.svg)](https://www.npmjs.com/package/@johntalton/RotaryEncoder)
+![GitHub last commit](https://img.shields.io/github/last-commit/johntalton/RotaryEncoder)
+
+
 Uses spec defined state machine to validate control and give accurate and consistant output (see bellow).
 
 Also includes push down / up button functionality (click like events)
