@@ -5,10 +5,10 @@
   "main": "src/rotaryencoder.js",
   "dependencies": {
     "mqtt": "^4.1.0",
-    "onoff": "^3.0.2"
+    "onoff": "^6.0.0"
   },
   "devDependencies": {
-    "eslint": "^4.19.1"
+    "eslint": "^7.3.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
