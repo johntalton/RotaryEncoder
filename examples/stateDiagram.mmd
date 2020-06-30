@@ -1,0 +1,26 @@
+stateDiagram-v2
+    [*] --> I: Init
+    
+    I --> II: A1
+    II --> I: A0 (RCCW)
+    II --> II: A1/B0
+    II --> IV: B1
+    IV --> II: B0
+    IV --> VI: A0
+    IV --> IV: A1/B1
+    VI --> IV: A1
+    VI --> VI: A0/B1
+
+    VI --> I: B0 (CW)
+
+    I --> III: B1
+    III --> I: B0 (RCW)
+    III --> III: A0/B1
+    III --> V: A1
+    V --> III: A0
+    V --> VII: B0
+    V --> V: A1/B1 
+    VII --> V: B1
+    VII --> VII: A1/B0
+
+    VII --> I: A0 (CCW)
