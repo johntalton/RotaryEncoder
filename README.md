@@ -8,7 +8,7 @@ Simple knob control.  Good for simple step up / step down rotation where center 
 ![GitHub](https://img.shields.io/github/license/johntalton/RotaryEncoder)
 [![Downloads Per Month](http://img.shields.io/npm/dm/@johntalton/RotaryEncoder.svg)](https://www.npmjs.com/package/@johntalton/RotaryEncoder)
 ![GitHub last commit](https://img.shields.io/github/last-commit/johntalton/RotaryEncoder)
-
+[![Package Quality](https://npm.packagequality.com/shield/%40johntalton%2FRotaryEncoder.svg)](https://packagequality.com/#?package=@johntalton/RotaryEncoder)
 
 Uses spec defined state machine to validate control and give accurate and consistant output (see bellow).
 
