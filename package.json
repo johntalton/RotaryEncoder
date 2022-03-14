@@ -8,7 +8,7 @@
     "onoff": "^6.0.0"
   },
   "devDependencies": {
-    "eslint": "^7.3.1"
+    "eslint": "^8.11.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
