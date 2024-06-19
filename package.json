@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/rotaryencoder.js",
   "dependencies": {
-    "mqtt": "^4.1.0",
+    "mqtt": "^5.7.1",
     "onoff": "^6.0.0"
   },
   "devDependencies": {
